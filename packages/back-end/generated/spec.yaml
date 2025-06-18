@@ -114,6 +114,9 @@ tags:
   - name: queries
     x-displayName: Queries
     description: Retrieve queries used in experiments to calculate results.
+  - name: metric-groups
+    x-displayName: Metric Groups
+    description: Groups of metrics for easier management and analysis
   - name: Archetype_model
     x-displayName: Archetype
     description: <SchemaDefinition schemaRef="#/components/schemas/Archetype" />
@@ -192,6 +195,9 @@ tags:
   - name: Metric_model
     x-displayName: Metric
     description: <SchemaDefinition schemaRef="#/components/schemas/Metric" />
+  - name: MetricGroup_model
+    x-displayName: MetricGroup
+    description: <SchemaDefinition schemaRef="#/components/schemas/MetricGroup" />
   - name: Organization_model
     x-displayName: Organization
     description: <SchemaDefinition schemaRef="#/components/schemas/Organization" />
@@ -5085,6 +5091,244 @@ paths:
                 properties:
                   query:
                     $ref: '#/components/schemas/Query'
+  /metric-groups:
+    get:
+      tags:
+        - metric-groups
+      summary: Get all metric groups for an organization
+      operationId: getMetricGroups
+      parameters:
+        - in: query
+          name: orgId
+          schema:
+            type: string
+          required: true
+          description: Organization id
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                type: object
+                required:
+                  - metricGroups
+                properties:
+                  metricGroups:
+                    type: array
+                    items:
+                      $ref: '#/components/schemas/MetricGroup'
+    post:
+      parameters: []
+      tags:
+        - metric-groups
+      summary: Create a metric group
+      operationId: postMetricGroup
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required:
+                - name
+                - datasource
+              properties:
+                name:
+                  type: string
+                  description: Name of the metric group
+                description:
+                  type: string
+                  description: Description of the metric group
+                datasource:
+                  type: string
+                  description: Datasource id for the metric group
+                metrics:
+                  type: array
+                  items:
+                    type: string
+                  description: List of metric ids in the group
+                owner:
+                  type: string
+                  description: Owner of the metric group
+                projects:
+                  type: array
+                  items:
+                    type: string
+                  description: Project ids associated with the metric group
+                tags:
+                  type: array
+                  items:
+                    type: string
+                  description: Tags associated with the metric group
+                archived:
+                  type: boolean
+                  description: Whether the metric group is archived
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                type: object
+                required:
+                  - metricGroup
+                properties:
+                  metricGroup:
+                    $ref: '#/components/schemas/MetricGroup'
+  '/metric-group/{id}':
+    put:
+      parameters:
+        - in: path
+          name: id
+          schema:
+            type: string
+          required: true
+          description: Metric group id
+      tags:
+        - metric-groups
+      summary: Update a metric group
+      operationId: putMetricGroup
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                name:
+                  type: string
+                  description: Name of the metric group
+                metrics:
+                  type: array
+                  items:
+                    type: string
+                  description: List of metric ids in the group
+                datasource:
+                  type: string
+                  description: Datasource id for the metric group
+                description:
+                  type: string
+                  description: Description of the metric group
+                owner:
+                  type: string
+                  description: Owner of the metric group
+                projects:
+                  type: array
+                  items:
+                    type: string
+                  description: Project ids associated with the metric group
+                tags:
+                  type: array
+                  items:
+                    type: string
+                  description: Tags associated with the metric group
+                archived:
+                  type: boolean
+                  description: Whether the metric group is archived
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                type: object
+                required:
+                  - metricGroup
+                properties:
+                  metricGroup:
+                    $ref: '#/components/schemas/MetricGroup'
+    delete:
+      parameters:
+        - in: path
+          name: id
+          schema:
+            type: string
+          required: true
+          description: Metric group id
+      tags:
+        - metric-groups
+      summary: Delete a metric group
+      operationId: deleteMetricGroup
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                type: object
+                required:
+                  - status
+                properties:
+                  status:
+                    type: string
+                    example: success
+  '/metric-group/{id}/reorder':
+    put:
+      parameters:
+        - in: path
+          name: id
+          schema:
+            type: string
+          required: true
+          description: Metric group id
+      tags:
+        - metric-groups
+      summary: Reorder metrics in a metric group
+      operationId: putMetricGroupReorder
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required:
+                - from
+                - to
+              properties:
+                from:
+                  type: integer
+                  description: The index to move from
+                to:
+                  type: integer
+                  description: The index to move to
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                type: object
+                required:
+                  - metricGroup
+                properties:
+                  metricGroup:
+                    $ref: '#/components/schemas/MetricGroup'
+  '/metric-group/{id}/remove/{metricId}':
+    delete:
+      parameters:
+        - in: path
+          name: id
+          schema:
+            type: string
+          required: true
+          description: Metric group id
+        - in: path
+          name: metricId
+          schema:
+            type: string
+          required: true
+          description: Metric id to remove
+      tags:
+        - metric-groups
+      summary: Remove a metric from a metric group
+      operationId: removeMetricFromGroup
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                type: object
+                required:
+                  - metricGroup
+                properties:
+                  metricGroup:
+                    $ref: '#/components/schemas/MetricGroup'
 components:
   parameters:
     id:
@@ -7446,6 +7690,61 @@ components:
             type: string
         runAtEnd:
           type: boolean
+    MetricGroup:
+      type: object
+      required:
+        - id
+        - organization
+        - name
+        - datasource
+        - metrics
+        - dateCreated
+        - dateUpdated
+      properties:
+        id:
+          type: string
+          description: Unique identifier for the metric group
+        organization:
+          type: string
+          description: Organization id
+        owner:
+          type: string
+          description: Owner of the metric group
+        dateCreated:
+          type: string
+          format: date-time
+          description: Date the metric group was created
+        dateUpdated:
+          type: string
+          format: date-time
+          description: Date the metric group was last updated
+        name:
+          type: string
+          description: Name of the metric group
+        description:
+          type: string
+          description: Description of the metric group
+        tags:
+          type: array
+          items:
+            type: string
+          description: Tags associated with the metric group
+        projects:
+          type: array
+          items:
+            type: string
+          description: Project ids associated with the metric group
+        metrics:
+          type: array
+          items:
+            type: string
+          description: List of metric ids in the group
+        datasource:
+          type: string
+          description: Datasource id for the metric group
+        archived:
+          type: boolean
+          description: Whether the metric group is archived
   securitySchemes:
     bearerAuth:
       type: http
@@ -7501,6 +7800,7 @@ x-tagGroups:
       - code-references
       - archetypes
       - queries
+      - metric-groups
   - name: Models
     tags:
       - Archetype_model
@@ -7529,6 +7829,7 @@ x-tagGroups:
       - FeatureWithRevisions_model
       - Member_model
       - Metric_model
+      - MetricGroup_model
       - Organization_model
       - PaginationFields_model
       - Project_model

@@ -1,4 +1,3 @@
-parameters: []
 tags:
   - metric-groups
 summary: Get all metric groups for an organization

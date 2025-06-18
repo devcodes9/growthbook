@@ -117,6 +117,9 @@ tags:
   - name: queries
     x-displayName: Queries
     description: Retrieve queries used in experiments to calculate results.
+  - name: metric-groups
+    x-displayName: Metric Groups
+    description: Groups of metrics for easier management and analysis
 paths:
   /features:
     get:
@@ -322,6 +325,22 @@ paths:
   /queries/{id}:
     get:
       $ref: "./paths/getQuery.yaml"
+  /metric-groups:
+    get:
+      $ref: "./paths/getMetricGroups.yaml"
+    post:
+      $ref: "./paths/postMetricGroup.yaml"
+  /metric-group/{id}:
+    put:
+      $ref: "./paths/putMetricGroup.yaml"
+    delete:
+      $ref: "./paths/deleteMetricGroup.yaml"
+  /metric-group/{id}/reorder:
+    put:
+      $ref: "./paths/putMetricGroupReorder.yaml"
+  /metric-group/{id}/remove/{metricId}:
+    delete:
+      $ref: "./paths/removeMetricFromGroup.yaml"
   # PLOP_INSERT_PATHS_HERE
 components:
   parameters:
