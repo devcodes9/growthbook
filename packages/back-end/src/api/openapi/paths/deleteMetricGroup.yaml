@@ -1,0 +1,23 @@
+parameters:
+  - in: path
+    name: id
+    schema:
+      type: string
+    required: true
+    description: Metric group id
+tags:
+  - metric-groups
+summary: Delete a metric group
+operationId: deleteMetricGroup
+responses:
+  "200":
+    content:
+      application/json:
+        schema:
+          type: object
+          required:
+            - status
+          properties:
+            status:
+              type: string
+              example: success

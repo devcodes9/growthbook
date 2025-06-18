@@ -1,0 +1,28 @@
+parameters:
+  - in: path
+    name: id
+    schema:
+      type: string
+    required: true
+    description: Metric group id
+  - in: path
+    name: metricId
+    schema:
+      type: string
+    required: true
+    description: Metric id to remove
+tags:
+  - metric-groups
+summary: Remove a metric from a metric group
+operationId: removeMetricFromGroup
+responses:
+  "200":
+    content:
+      application/json:
+        schema:
+          type: object
+          required:
+            - metricGroup
+          properties:
+            metricGroup:
+              $ref: "../schemas/MetricGroup.yaml"

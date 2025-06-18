@@ -1,0 +1,11 @@
+type: object
+required:
+  - from
+  - to
+properties:
+  from:
+    type: integer
+    description: The index to move from
+  to:
+    type: integer
+    description: The index to move to

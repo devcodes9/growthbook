@@ -1,0 +1,28 @@
+parameters:
+  - in: path
+    name: id
+    schema:
+      type: string
+    required: true
+    description: Metric group id
+tags:
+  - metric-groups
+summary: Reorder metrics in a metric group
+operationId: putMetricGroupReorder
+requestBody:
+  required: true
+  content:
+    application/json:
+      schema:
+        $ref: "../payload-schemas/PutMetricGroupReorderPayload.yaml"
+responses:
+  "200":
+    content:
+      application/json:
+        schema:
+          type: object
+          required:
+            - metricGroup
+          properties:
+            metricGroup:
+              $ref: "../schemas/MetricGroup.yaml"

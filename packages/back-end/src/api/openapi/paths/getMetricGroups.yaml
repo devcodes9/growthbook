@@ -1,0 +1,25 @@
+parameters: []
+tags:
+  - metric-groups
+summary: Get all metric groups for an organization
+operationId: getMetricGroups
+parameters:
+  - in: query
+    name: orgId
+    schema:
+      type: string
+    required: true
+    description: Organization id
+responses:
+  "200":
+    content:
+      application/json:
+        schema:
+          type: object
+          required:
+            - metricGroups
+          properties:
+            metricGroups:
+              type: array
+              items:
+                $ref: "../schemas/MetricGroup.yaml"
