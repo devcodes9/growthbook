@@ -1,4 +1,4 @@
-import type { Response } from "express";
+import { Response } from "express";
 import { AuthRequest } from "back-end/src/types/AuthRequest";
 import { getContextFromReq } from "back-end/src/services/organizations";
 import {
@@ -7,181 +7,171 @@ import {
 } from "back-end/types/metric-groups";
 import { getDataSourceById } from "back-end/src/models/DataSourceModel";
 import { removeMetricFromExperiments } from "back-end/src/models/ExperimentModel";
+import { createApiRequestHandler } from "back-end/src/util/handler";
+import {
+  getMetricGroupsValidator,
+  postMetricGroupValidator,
+  putMetricGroupValidator,
+  deleteMetricGroupValidator,
+  putMetricGroupReorderValidator,
+  removeMetricFromGroupValidator,
+} from "back-end/src/validators/openapi";
+import {
+  GetMetricGroupsResponse,
+  PostMetricGroupResponse,
+  PutMetricGroupResponse,
+  DeleteMetricGroupResponse,
+  PutMetricGroupReorderResponse,
+  RemoveMetricFromGroupResponse,
+} from "back-end/types/openapi";
 
-export const getMetricGroups = async (
-  req: AuthRequest,
-  res: Response<{ status: 200; metricGroups: MetricGroupInterface[] }>
-) => {
-  const context = getContextFromReq(req);
-
-  const metricGroups = await context.models.metricGroups.getAll();
-  res.status(200).json({
-    status: 200,
-    metricGroups,
-  });
-};
-
-export const postMetricGroup = async (
-  req: AuthRequest<CreateMetricGroupProps>,
-  res: Response<{ status: 200; metricGroup: MetricGroupInterface }>
-) => {
-  const data = req.body;
-  const context = getContextFromReq(req);
-
-  if (!context.permissions.canCreateMetricGroup()) {
-    context.permissions.throwPermissionError();
+export const getMetricGroups = createApiRequestHandler(
+  getMetricGroupsValidator
+)(
+  async (req): Promise<GetMetricGroupsResponse> => {
+    const metricGroups = (
+      await req.context.models.metricGroups.getAll()
+    ).map((mg: MetricGroupInterface) =>
+      req.context.models.metricGroups.toApiInterface(mg)
+    );
+    return { metricGroups };
   }
+);
 
-  const datasourceDoc = await getDataSourceById(context, data.datasource);
-  if (!datasourceDoc) {
-    throw new Error("Invalid data source");
+export const postMetricGroup = createApiRequestHandler(
+  postMetricGroupValidator
+)(
+  async (req): Promise<PostMetricGroupResponse> => {
+    const data = req.body;
+    const context = req.context;
+    if (!context.permissions.canCreateMetricGroup()) {
+      context.permissions.throwPermissionError();
+    }
+    const datasourceDoc = await getDataSourceById(context, data.datasource);
+    if (!datasourceDoc) {
+      throw new Error("Invalid data source");
+    }
+    const baseMetricGroup = {
+      ...data,
+      owner: data.owner || "",
+      description: data.description || "",
+      tags: data.tags || [],
+      projects: data.projects || [],
+      archived: data.archived || false,
+      metrics: data.metrics || [],
+    };
+    const doc = await context.models.metricGroups.create(baseMetricGroup);
+    return { metricGroup: context.models.metricGroups.toApiInterface(doc) };
   }
+);
 
-  const baseMetricGroup: Omit<
-    MetricGroupInterface,
-    "id" | "organization" | "dateCreated" | "dateUpdated"
-  > = {
-    ...data,
-    owner: data.owner || "",
-    description: data.description || "",
-    tags: data.tags || [],
-    projects: data.projects || [],
-    archived: data.archived || false,
-  };
-
-  const doc = await context.models.metricGroups.create(baseMetricGroup);
-
-  res.status(200).json({
-    status: 200,
-    metricGroup: doc,
-  });
-};
-
-export const putMetricGroup = async (
-  req: AuthRequest<CreateMetricGroupProps, { id: string }>,
-  res: Response<{ status: 200 }>
-) => {
-  const data = req.body;
-  const context = getContextFromReq(req);
-  const { org } = context;
-
-  const metricGroup = await context.models.metricGroups.getById(req.params.id);
-  if (!metricGroup) {
-    throw new Error("Could not find metric group with that id");
+export const putMetricGroup = createApiRequestHandler(putMetricGroupValidator)(
+  async (req): Promise<PutMetricGroupResponse> => {
+    const data = req.body;
+    const context = req.context;
+    const { org } = context;
+    const metricGroup = await context.models.metricGroups.getById(
+      req.params.id
+    );
+    if (!metricGroup) {
+      throw new Error("Could not find metric group with that id");
+    }
+    if (org.id !== metricGroup.organization) {
+      throw new Error("You don't have access to that metric group");
+    }
+    if (!context.permissions.canUpdateMetricGroup()) {
+      context.permissions.throwPermissionError();
+    }
+    const datasourceDoc = await getDataSourceById(
+      context,
+      data?.datasource || metricGroup.datasource
+    );
+    if (!datasourceDoc) {
+      throw new Error("Invalid data source");
+    }
+    const updated = await context.models.metricGroups.updateById(
+      req.params.id,
+      data
+    );
+    return { metricGroup: context.models.metricGroups.toApiInterface(updated) };
   }
-  if (org.id !== metricGroup.organization) {
-    throw new Error("You don't have access to that metric group");
+);
+
+export const deleteMetricGroup = createApiRequestHandler(
+  deleteMetricGroupValidator
+)(
+  async (req): Promise<DeleteMetricGroupResponse> => {
+    const context = req.context;
+    if (!context.permissions.canDeleteMetricGroup()) {
+      context.permissions.throwPermissionError();
+    }
+    const metricGroup = await context.models.metricGroups.getById(
+      req.params.id
+    );
+    if (!metricGroup) {
+      throw new Error("Could not find the metric group");
+    }
+    // should we delete all references to this metric group in the experiments?
+    await removeMetricFromExperiments(context, metricGroup.id);
+    await context.models.metricGroups.delete(metricGroup);
+    return { status: "success" };
   }
-
-  if (!context.permissions.canUpdateMetricGroup()) {
-    context.permissions.throwPermissionError();
-  }
-
-  const datasourceDoc = await getDataSourceById(
-    context,
-    data?.datasource || metricGroup.datasource
-  );
-  if (!datasourceDoc) {
-    throw new Error("Invalid data source");
-  }
-  await context.models.metricGroups.updateById(req.params.id, data);
-
-  res.status(200).json({
-    status: 200,
-  });
-};
-
-export const deleteMetricGroup = async (
-  req: AuthRequest<null, { id: string }>,
-  res: Response<{ status: 200 }>
-) => {
-  const context = getContextFromReq(req);
-
-  if (!context.permissions.canDeleteMetricGroup()) {
-    context.permissions.throwPermissionError();
-  }
-
-  const metricGroup = await context.models.metricGroups.getById(req.params.id);
-
-  if (!metricGroup) {
-    throw new Error("Could not find the metric group");
-  }
-
-  // should we delete all references to this metric group in the experiments?
-  await removeMetricFromExperiments(context, metricGroup.id);
-
-  await context.models.metricGroups.delete(metricGroup);
-
-  res.status(200).json({
-    status: 200,
-  });
-};
+);
 
 // reorder metrics within a group
-export const putMetricGroupReorder = async (
-  req: AuthRequest<{ from: number; to: number }, { id: string }>,
-  res: Response<{ status: 200 }>
-) => {
-  const context = getContextFromReq(req);
-
-  const { id } = req.params;
-  const metricGroup = await context.models.metricGroups.getById(req.params.id);
-  if (!metricGroup) {
-    throw new Error("Could not find metric group with that id");
+export const putMetricGroupReorder = createApiRequestHandler(
+  putMetricGroupReorderValidator
+)(
+  async (req): Promise<PutMetricGroupReorderResponse> => {
+    const context = req.context;
+    const { id } = req.params;
+    const metricGroup = await context.models.metricGroups.getById(id);
+    if (!metricGroup) {
+      throw new Error("Could not find metric group with that id");
+    }
+    if (!context.permissions.canUpdateMetricGroup()) {
+      context.permissions.throwPermissionError();
+    }
+    if (metricGroup.organization !== context.org.id) {
+      throw new Error("You don't have access to that metric group");
+    }
+    const { from, to } = req.body;
+    const existingMetrics = [...metricGroup.metrics];
+    const [removed] = existingMetrics.splice(from, 1);
+    existingMetrics.splice(to, 0, removed);
+    const updated = await context.models.metricGroups.updateById(id, {
+      metrics: existingMetrics,
+    });
+    return { metricGroup: context.models.metricGroups.toApiInterface(updated) };
   }
-  if (!context.permissions.canUpdateMetricGroup()) {
-    context.permissions.throwPermissionError();
-  }
-  if (metricGroup.organization !== context.org.id) {
-    throw new Error("You don't have access to that metric group");
-  }
-
-  const { from, to } = req.body;
-
-  const existingMetrics = metricGroup.metrics;
-  const [removed] = existingMetrics.splice(from, 1);
-  existingMetrics.splice(to, 0, removed);
-
-  await context.models.metricGroups.updateById(id, {
-    metrics: existingMetrics,
-  });
-
-  res.status(200).json({
-    status: 200,
-  });
-};
+);
 
 // remove a metric from a group
-export const removeMetricFromGroup = async (
-  req: AuthRequest<null, { id: string; metricId: string }>,
-  res: Response<{ status: 200 }>
-) => {
-  const context = getContextFromReq(req);
-
-  const { id, metricId } = req.params;
-  const metricGroup = await context.models.metricGroups.getById(req.params.id);
-  if (!metricGroup) {
-    throw new Error("Could not find metric group with that id");
+export const removeMetricFromGroup = createApiRequestHandler(
+  removeMetricFromGroupValidator
+)(
+  async (req): Promise<RemoveMetricFromGroupResponse> => {
+    const context = req.context;
+    const { id, metricId } = req.params;
+    const metricGroup = await context.models.metricGroups.getById(id);
+    if (!metricGroup) {
+      throw new Error("Could not find metric group with that id");
+    }
+    if (!context.permissions.canUpdateMetricGroup()) {
+      context.permissions.throwPermissionError();
+    }
+    if (metricGroup.organization !== context.org.id) {
+      throw new Error("You don't have access to that metric group");
+    }
+    const existingMetrics = [...metricGroup.metrics];
+    const index = existingMetrics.indexOf(metricId);
+    if (index === -1) {
+      throw new Error("Could not find metric in group");
+    }
+    existingMetrics.splice(index, 1);
+    const updated = await context.models.metricGroups.updateById(id, {
+      metrics: existingMetrics,
+    });
+    return { metricGroup: context.models.metricGroups.toApiInterface(updated) };
   }
-  if (!context.permissions.canUpdateMetricGroup()) {
-    context.permissions.throwPermissionError();
-  }
-  if (metricGroup.organization !== context.org.id) {
-    throw new Error("You don't have access to that metric group");
-  }
-
-  const existingMetrics = metricGroup.metrics;
-  const index = existingMetrics.indexOf(metricId);
-  if (index === -1) {
-    throw new Error("Could not find metric in group");
-  }
-  existingMetrics.splice(index, 1);
-
-  await context.models.metricGroups.updateById(id, {
-    metrics: existingMetrics,
-  });
-
-  res.status(200).json({
-    status: 200,
-  });
-};
+);

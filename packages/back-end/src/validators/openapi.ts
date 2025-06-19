@@ -584,7 +584,7 @@ export const getQueryValidator = {
 
 export const getMetricGroupsValidator = {
   bodySchema: z.never(),
-  querySchema: z.object({ "orgId": z.string() }).strict(),
+  querySchema: z.never(),
   paramsSchema: z.never(),
 };
 

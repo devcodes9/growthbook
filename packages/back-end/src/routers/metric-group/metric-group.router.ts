@@ -13,53 +13,18 @@ const router = express.Router();
 
 const metricGroupController = wrapController(rawMetricGroupController);
 
-router.get(
-  "/metric-groups",
-  validateRequestMiddleware({
-    params: z.object({ orgId: z.string() }).strict(),
-  }),
-  metricGroupController.getMetricGroups
-);
+router.get("/", metricGroupController.getMetricGroups);
 
-router.post(
-  "/metric-group",
-  validateRequestMiddleware({
-    body: createMetricGroupPropsValidator,
-  }),
-  metricGroupController.postMetricGroup
-);
+router.post("/", metricGroupController.postMetricGroup);
 
-router.put(
-  "/metric-group/:id",
-  validateRequestMiddleware({
-    params: z.object({ id: z.string() }),
-    body: updateMetricGroupPropsValidator,
-  }),
-  metricGroupController.putMetricGroup
-);
+router.put("/:id", metricGroupController.putMetricGroup);
+
+router.delete(":id", metricGroupController.deleteMetricGroup);
+
+router.put(":id/reorder", metricGroupController.putMetricGroupReorder);
 
 router.delete(
-  "/metric-group/:id",
-  validateRequestMiddleware({
-    params: z.object({ id: z.string() }),
-  }),
-  metricGroupController.deleteMetricGroup
-);
-
-router.put(
-  "/metric-group/:id/reorder",
-  validateRequestMiddleware({
-    params: z.object({ id: z.string() }),
-    body: updateOrderValidator,
-  }),
-  metricGroupController.putMetricGroupReorder
-);
-
-router.delete(
-  "/metric-group/:id/remove/:metricId",
-  validateRequestMiddleware({
-    params: z.object({ id: z.string(), metricId: z.string() }).strict(),
-  }),
+  ":id/remove/:metricId",
   metricGroupController.removeMetricFromGroup
 );
 

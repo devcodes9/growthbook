@@ -2,13 +2,6 @@ tags:
   - metric-groups
 summary: Get all metric groups for an organization
 operationId: getMetricGroups
-parameters:
-  - in: query
-    name: orgId
-    schema:
-      type: string
-    required: true
-    description: Organization id
 responses:
   "200":
     content:

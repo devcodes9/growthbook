@@ -9602,12 +9602,6 @@ export interface operations {
   };
   getMetricGroups: {
     /** Get all metric groups for an organization */
-    parameters: {
-        /** @description Organization id */
-      query: {
-        orgId: string;
-      };
-    };
     responses: {
       200: {
         content: {
